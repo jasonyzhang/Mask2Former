@@ -351,6 +351,7 @@ class MaskFormer(nn.Module):
         # scores_per_image, topk_indices = scores.flatten(0, 1).topk(self.num_queries, sorted=False)
         scores_per_image, topk_indices = scores.flatten(0, 1).topk(self.test_topk_per_image, sorted=False)
         labels_per_image = labels[topk_indices]
+        mask_cls_new = mask_cls[:, :-1].flatten(0, 1)[topk_indices]
 
         topk_indices = topk_indices // self.sem_seg_head.num_classes
         # mask_pred = mask_pred.unsqueeze(1).repeat(1, self.sem_seg_head.num_classes, 1).flatten(0, 1)
@@ -365,6 +366,7 @@ class MaskFormer(nn.Module):
             scores_per_image = scores_per_image[keep]
             labels_per_image = labels_per_image[keep]
             mask_pred = mask_pred[keep]
+            mask_cls_new = mask_cls_new[keep]
 
         result = Instances(image_size)
         # mask (before sigmoid)
@@ -377,4 +379,5 @@ class MaskFormer(nn.Module):
         mask_scores_per_image = (mask_pred.sigmoid().flatten(1) * result.pred_masks.flatten(1)).sum(1) / (result.pred_masks.flatten(1).sum(1) + 1e-6)
         result.scores = scores_per_image * mask_scores_per_image
         result.pred_classes = labels_per_image
+        result.pred_logits = mask_cls_new
         return result
